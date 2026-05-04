@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?ccsproject version="1.0"?>
+<projectOptions>
+	<ccsVariant value="50:Theia-based"/>
+	<ccsVersion value="70.2.0"/>
+	<deviceFamily value="TMS470"/>
+	<connection value="common/targetdb/connections/TIXDS110_Connection.xml"/>
+	<executableActions value=""/>
+	<createSlaveProjects value=""/>
+	<ignoreDefaultDeviceSettings value="true"/>
+	<ignoreDefaultCCSSettings value="true"/>
+	<templateProperties value="id=posix_demo_LP_MSPM0G3507_freertos_ticlang.projectspec.posix_demo_LP_MSPM0G3507_freertos_ticlang,buildProfile=release,isHybrid=true"/>
+	<activeTargetConfiguration value="targetConfigs/MSPM0G3507.ccxml"/>
+	<isTargetConfigurationManual value="false"/>
+	<sourceLookupPath value="${COM_TI_MSPM0_SDK_INSTALL_DIR}/source/ti/driverlib"/>
+	<origin value="C:\ti\mspm0_sdk_2_05_01_00\examples\rtos\LP_MSPM0G3507\kernel\posix_demo\freertos\ticlang\posix_demo_LP_MSPM0G3507_freertos_ticlang.projectspec"/>
+	<filesToOpen value="README.md,posix_demo.syscfg"/>
+</projectOptions>
