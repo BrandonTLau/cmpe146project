@@ -1,53 +1,54 @@
-## Example Summary
+# S-RAQMS: Secure Real-Time Air Quality Monitoring and Analysis System
 
-The POSIX demo implements a blinking LED with POSIX thread where the
-LED blinks every 1 second.
+## Project Overview
+**S-RAQMS** is an RTOS-based embedded system utilizing internal silicon thermal and voltage characteristics to simulate and analyze environmental air quality via hardware acceleration and secure data logging. 
 
-## Peripherals & Pin Assignments
+This project is built using a **Layered Microkernel Architecture** to separate hardware-specific drivers from high-level application logic through a middle layer of hardware accelerators.
 
-| Peripheral | Pin | Function |
-| --- | --- | --- |
-| GPIOA | PA0 | Open-Drain Output |
-| SYSCTL |  |  |
-| EVENT |  |  |
-| DEBUGSS | PA20 | Debug Clock |
-| DEBUGSS | PA19 | Debug Data In Out |
+**Author:** Kit Sun Anson Lee
 
-## BoosterPacks, Board Resources & Jumper Settings
+---
 
-Visit [LP_MSPM0G3507](https://www.ti.com/tool/LP-MSPM0G3507) for LaunchPad information, including user guide and hardware files.
+## Hardware & Software Stack
+* **Microcontroller:** Texas Instruments LP-MSPM0G3507 (ARM Cortex-M0+)
+* **Operating System:** FreeRTOS
+* **Development Environment:** Code Composer Studio (CCS) / Eclipse Theia
+* **Compiler:** TI Arm Clang
+* **Hardware Accelerators:** MATHACL (Math Accelerator), AES-128, DMA Controller
 
-| Pin | Peripheral | Function | LaunchPad Pin | LaunchPad Settings |
-| --- | --- | --- | --- | --- |
-| PA0 | GPIOA | PA0 | J27_9 | <ul><li>PA0 is 5V tolerant open-drain so it requires pull-up<br><ul><li>`J19 1:2` Use 3.3V pull-up<br><li>`J19 2:3` Use 5V pull-up</ul><br><li>PA0 can be connected to LED1<br><ul><li>`J4 ON` Connect to LED1<br><li>`J4 OFF` Disconnect from LED1</ul></ul> |
-| PA20 | DEBUGSS | SWCLK | N/A | <ul><li>PA20 is used by SWD during debugging<br><ul><li>`J101 15:16 ON` Connect to XDS-110 SWCLK while debugging<br><li>`J101 15:16 OFF` Disconnect from XDS-110 SWCLK if using pin in application</ul></ul> |
-| PA19 | DEBUGSS | SWDIO | N/A | <ul><li>PA19 is used by SWD during debugging<br><ul><li>`J101 13:14 ON` Connect to XDS-110 SWDIO while debugging<br><li>`J101 13:14 OFF` Disconnect from XDS-110 SWDIO if using pin in application</ul></ul> |
+---
 
-### Device Migration Recommendations
-This project was developed for a superset device included in the LP_MSPM0G3507 LaunchPad. Please
-visit the [CCS User's Guide](https://software-dl.ti.com/msp430/esd/MSPM0-SDK/latest/docs/english/tools/ccs_ide_guide/doc_guide/doc_guide-srcs/ccs_ide_guide.html#manual-migration)
-for information about migrating to other MSPM0 devices.
+## Key Features
+* **Real-Time Sampling:** Captures environmental fluctuations by sampling the internal ADC12 at a rate of 100Hz, triggered deterministically by a Hardware Timer (TIMA0).
+* **Hardware Offloading & Math Engine:** Implements a 10-point Moving Average Filter (MAF) using the MATHACL to stabilize raw sensor data, keeping CPU utilization below 30% without relying on a floating-point unit.
+* **Concurrent Task Management:** Utilizes FreeRTOS to manage three concurrent tasks with fixed-priority preemption:
+  1. **Processing Task (High Priority):** Handles DMA interrupts, watchdog feeding, and mathematical filtering.
+  2. **Logging Task (Medium Priority):** Executes AES-128 encryption on aggregated data every 60 seconds.
+  3. **UART Task (Low Priority):** Outputs a command-line interface with the Air Quality Index, CPU temperature, and system uptime.
+* **Security & Integrity:** * Air-quality logs are encrypted using the onboard AES-128 hardware accelerator.
+  * An onboard Memory Protection Unit (MPU) restricts AES encryption key access to "Privileged Access Only".
+  * Implements CRC-32 checksums for every data packet to prevent memory corruption.
+* **Reliability:** Integrates a Windowed Watchdog Timer (WWDT) for automatic recovery from main-loop hangs, and utilizes a Circular Buffer in the 32KB SRAM to manage data lifecycle safely.
 
-### Low-Power Recommendations
-TI recommends to terminate unused pins by setting the corresponding functions to
-GPIO and configure the pins to output low or input with internal
-pullup/pulldown resistor.
+---
 
-SysConfig allows developers to easily configure unused pins by selecting **Board**→**Configure Unused Pins**.
+## Architecture details
 
-For more information about jumper configuration to achieve low-power using the
-MSPM0 LaunchPad, please visit the [LP-MSPM0G3507 User's Guide](https://www.ti.com/lit/slau873).
+### FreeRTOS Task Structure
+The task scheduling is strictly prioritized to meet real-time constraints:
+* **High Priority (3):** Processing Task - wakes from Sleep Mode via Binary Semaphore triggered by DMA completion.
+* **Medium Priority (2):** Logging Task - waits on a FreeRTOS queue/notification for filtered AQI data.
+* **Low Priority (1):** UART Task - waits on a Message Queue for encrypted packets to transmit.
 
-## Example Usage
+### Memory & State Management
+* **Circular Buffer:** Stores encrypted logs (up to 1024 packets). Oldest records are safely overwritten when the buffer is full.
+* **Dynamic Calibration:** Calculates average ambient temperature over 5 seconds upon startup for baseline AQI zeroing.
 
-Compile, load and run the example.
-LED1 will blink every 1s.
+---
 
-## Application Design Details
-
-* This example uses POSIX API functions to create a task.
-* A single Thread is used to blink LED1 with a delay of 1s.
-
-### FREERTOS:
-
-* Please view the FreeRTOSConfig.h header file for example configuration information.
+## Testing Scenarios
+The system is validated against rigorous functional and exceptional corner cases:
+1. **ADC Saturation (CC-01):** Fixed-point math constraints handle max ADC values (4095) without integer overflow.
+2. **Buffer Wrap (CC-02):** Circular buffer pointers automatically reset and overwrite sequentially.
+3. **Task Starvation (EX-01):** Validated WWDT reset mechanism during simulated CPU hangs.
+4. **Memory Violation (EX-02):** HardFault_Handler successfully intercepts unauthorized memory read attempts from the UART task to the AES key region.
